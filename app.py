@@ -9,11 +9,35 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
 # ==========================================
-# CONFIGURATION & STYLING
+# CONFIGURATION & SIMPLE STYLING
 # ==========================================
 st.set_page_config(page_title="Logistics Analytics", layout="wide")
-sns.set_style("whitegrid")
-sns.set_palette("muted")
+
+# Inject simple CSS to change the background directly in the code (no extra files needed)
+st.markdown("""
+<style>
+    /* Change main app background to a professional dark navy */
+    .stApp {
+        background-color: #101820; 
+    }
+    /* Change sidebar background to a slightly darker shade */
+    [data-testid="stSidebar"] {
+        background-color: #0b1015;
+    }
+    /* Customize the top header padding for a cleaner look */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Set chart styles to match the dark aesthetic
+sns.set_style("darkgrid", {"axes.facecolor": "#1a242f", "figure.facecolor": "#101820"})
+plt.rcParams['text.color'] = 'white'
+plt.rcParams['axes.labelcolor'] = 'white'
+plt.rcParams['xtick.color'] = 'white'
+plt.rcParams['ytick.color'] = 'white'
 
 st.title("📦 Last-Mile Logistics Analytics")
 
@@ -78,28 +102,26 @@ tab1, tab2, tab3 = st.tabs(["📋 Data Manager", "📊 Analytics Dashboard", "�
 
 # --- TAB 1: DATA MANAGER ---
 with tab1:
-    edited_df = st.data_editor(df_raw, use_container_width=True, num_rows="dynamic", height=600)
+    st.data_editor(df_raw, use_container_width=True, num_rows="dynamic", height=500)
 
 # --- TAB 2: ANALYTICS DASHBOARD ---
 with tab2:
-    # Top KPI Metrics
     col1, col2, col3 = st.columns(3)
-    breach_rate = edited_df['SLA_Breach'].mean() * 100
-    avg_delay = (edited_df['Actual_Transit_Days'] - edited_df['Promised_Transit_Days']).mean()
+    breach_rate = df_raw['SLA_Breach'].mean() * 100
+    avg_delay = (df_raw['Actual_Transit_Days'] - df_raw['Promised_Transit_Days']).mean()
     
-    col1.metric("Total Orders", f"{len(edited_df):,}")
+    col1.metric("Total Orders", f"{len(df_raw):,}")
     col2.metric("SLA Breach Rate", f"{breach_rate:.1f}%")
     col3.metric("Avg Transit Delay", f"{avg_delay:.1f} Days")
     
     st.divider()
     
-    # Charts
     c1, c2 = st.columns(2)
     
     with c1:
         st.write("**Breach Rate by Carrier**")
         fig1, ax1 = plt.subplots(figsize=(6, 4))
-        carrier_breach = edited_df.groupby('Carrier')['SLA_Breach'].mean().reset_index()
+        carrier_breach = df_raw.groupby('Carrier')['SLA_Breach'].mean().reset_index()
         sns.barplot(x='Carrier', y='SLA_Breach', data=carrier_breach, ax=ax1, color="#3498db")
         ax1.set_ylabel("Breach Probability")
         ax1.set_xlabel("")
@@ -110,7 +132,7 @@ with tab2:
         st.write("**Feature Correlation**")
         fig2, ax2 = plt.subplots(figsize=(6, 4))
         numeric_cols = ['SLA_Breach', 'Distance_km', 'Weight_kg', 'Promised_Transit_Days']
-        sns.heatmap(edited_df[numeric_cols].corr(), annot=True, cmap="Blues", cbar=False, ax=ax2)
+        sns.heatmap(df_raw[numeric_cols].corr(), annot=True, cmap="Blues", cbar=False, ax=ax2)
         st.pyplot(fig2)
 
 # --- TAB 3: PREDICTIVE ML ---
@@ -138,7 +160,7 @@ with tab3:
         
         return acc, importances
 
-    accuracy, feat_df = train_model(edited_df)
+    accuracy, feat_df = train_model(df_raw)
     
     if accuracy > 0:
         st.success(f"Model Accuracy: **{accuracy * 100:.1f}%**")
@@ -150,5 +172,3 @@ with tab3:
         ax3.set_ylabel("")
         sns.despine(left=True, bottom=True)
         st.pyplot(fig3)
-    else:
-        st.warning("Insufficient variation in SLA_Breach data to train the model.")
